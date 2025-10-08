@@ -1,0 +1,10 @@
+[project]
+name = "mixxx-to-rekordbox"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lxml>=6.0.2",
+    "tqdm>=4.67.1",
+]
