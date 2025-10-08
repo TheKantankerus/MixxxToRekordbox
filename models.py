@@ -1,5 +1,30 @@
-from typing import List
+from dataclasses import dataclass, field
+
 from utils.random_id import generate_random_number
+
+SERATO_COLOURS = [
+    "c02626",  # Red
+    "f8821a",  # Orange
+    "fac313",  # Yellow
+    "1fad26",  # Green
+    "00FFFF",  # Cyan
+    "173ba2",  # Blue
+    "6823b6",  # Indigo
+    "ce359e",  # Light Magenta
+]
+
+
+@dataclass
+class TrackContext:
+    id: str
+    title: str
+    artist: str
+    album: str
+    genre: str
+    duration: int
+    location: str
+    samplerate: int
+    channels: int
 
 
 class CuePoint(dict):
@@ -37,25 +62,14 @@ class CuePoint(dict):
         )
 
 
-class CuePointCollection(dict):
-    def __init__(
-        self,
-        track_filename: str,
-        initial_cue_points: List[CuePoint] = None,
-        id: str = generate_random_number(8),
-        length: int = 999,
-    ):
-        if initial_cue_points is None:
-            initial_cue_points: List[CuePoint] = list()
-        self.cue_points: List[CuePoint] = initial_cue_points
-        self.track_filename: str = track_filename
-        self.id: str = id
-        self.length: int = length
-        super().__init__(
-            self, cue_points=self.cue_points, track_filename=self.track_filename
-        )
+@dataclass
+class CuePointCollection:
+    id: str
+    track_context: TrackContext
+    cue_points: list[CuePoint] = field(default_factory=list)
 
     def add_new_cue_point(self, cue_point: CuePoint):
+        cue_point.cue_color = SERATO_COLOURS[len(self.cue_points) % len(SERATO_COLOURS)]
         self.cue_points.append(cue_point)
 
     def __repr__(self):
