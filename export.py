@@ -1,4 +1,5 @@
 import os
+from os import path
 from utils.random_id import generate_random_number
 from typing import List
 from models import CuePoint, CuePointCollection, TrackContext
@@ -6,7 +7,22 @@ import sqlite3
 from tqdm import tqdm
 import rekordbox_gen
 
-mixxx_db = f"{os.getenv('LOCALAPPDATA')}\\Mixxx\\mixxxdb.sqlite"
+
+CUSTOM_DB_LOCATION = r""  # Change if your DB is not in the default location
+
+
+def get_mixxx_db_location() -> str:
+    if CUSTOM_DB_LOCATION:
+        return CUSTOM_DB_LOCATION
+    # Windows
+    if os.getenv("LOCALAPPDATA"):
+        return f"{os.getenv('LOCALAPPDATA')}\\Mixxx\\mixxxdb.sqlite"
+    # MacOS
+    if path.exists(r"~/Library/Application Support/Mixxx"):
+        return r"~/Library/Application Support/Mixxx/mixxxdb.sqlite"
+    # Linux
+    if path.exists(r"~/.mixxx"):
+        return r"~/.mixxx/mixxxdb.sqlite"
 
 
 def mixxx_cuepos_to_ms(cuepos, samplerate, channels):
@@ -14,7 +30,7 @@ def mixxx_cuepos_to_ms(cuepos, samplerate, channels):
 
 
 def main():
-    con = sqlite3.connect(mixxx_db)
+    con = sqlite3.connect(get_mixxx_db_location())
     cur = con.cursor()
 
     playlists = [
