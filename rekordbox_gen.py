@@ -1,7 +1,7 @@
-from typing import List
 from lxml import etree
-import models
 import platform
+
+from models import ExportedTrack
 
 
 def find_or_create_element(index: int, name: str, root: etree.Element) -> etree.Element:
@@ -13,7 +13,7 @@ def set_length_key(key: str, element: etree.Element) -> None:
 
 
 def generate(
-    tracks: List[models.CuePointCollection],
+    tracks: list[ExportedTrack],
     playlist_name,
     dj_playlist: etree.Element | None,
 ) -> etree.Element:
@@ -37,6 +37,7 @@ def generate(
         track_elm.set("Album", track.track_context.album)
         track_elm.set("Genre", track.track_context.genre)
         track_elm.set("SampleRate", str(track.track_context.samplerate))
+        track_elm.set("AverageBpm", str(track.track_context.bpm))
         if platform.system() == "Windows":
             track_elm.set(
                 "Location", "file://localhost/" + track.track_context.location
@@ -48,9 +49,9 @@ def generate(
             cue_element.set("Name", cue_point.cue_text.rstrip("\x00"))
             cue_element.set("Num", str(cue_point.cue_index))
             cue_element.set("Start", str(cue_point.cue_position / 1000))
-            cue_element.set("Red", "40")
-            cue_element.set("Green", "226")
-            cue_element.set("Blue", "20")
+            cue_element.set("Red", str(cue_point.cue_color.r_int))
+            cue_element.set("Green", str(cue_point.cue_color.g_int))
+            cue_element.set("Blue", str(cue_point.cue_color.b_int))
             cue_element.set("Type", "0")
             track_elm.append(cue_element)
         collection_elm.append(track_elm)

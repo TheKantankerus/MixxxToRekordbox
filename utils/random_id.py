@@ -2,11 +2,11 @@ import random
 
 rng = random.Random()
 
+existing_ids = []
 
-def generate_random_number(length):
-    total_characters = "0123456789"
-    randomString = ""
-    for i in range(0, length):
-        index = rng.randint(0, len(total_characters) - 1)
-        randomString += total_characters[index]
-    return randomString
+
+def generate_random_number() -> str:
+    gen_id = rng.randint(0, 2147483647)
+    while gen_id in existing_ids:
+        gen_id = rng.randint(0, 2147483647)
+    return f"{gen_id:010}"
