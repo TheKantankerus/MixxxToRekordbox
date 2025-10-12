@@ -3,6 +3,20 @@ import platform
 
 from models import ExportedTrack
 
+TRACK_COLLECTION: dict[str, ExportedTrack] = {}
+
+
+def format_track_id(track_id: int | str) -> str:
+    return f"{int(track_id):010}"
+
+
+def is_track_in_collection(track_id: int | str) -> str:
+    return format_track_id(track_id) in TRACK_COLLECTION
+
+
+def get_track_from_collection(track_id: int | str) -> str:
+    return TRACK_COLLECTION[format_track_id(track_id)]
+
 
 def find_or_create_element(index: int, name: str, root: etree.Element) -> etree.Element:
     return root[index] if len(root) > index else etree.Element(name)
@@ -29,6 +43,8 @@ def generate(
     collection_elm = find_or_create_element(1, "COLLECTION", dj_playlist)
 
     for track in tracks:
+        if track.id in TRACK_COLLECTION:
+            continue
         track_elm = etree.Element("TRACK")
         track_elm.set("TrackID", str(track.id))
         track_elm.set("TotalTime", str(track.track_context.duration))
@@ -55,6 +71,7 @@ def generate(
             cue_element.set("Type", "0")
             track_elm.append(cue_element)
         collection_elm.append(track_elm)
+        TRACK_COLLECTION[track.id] = track
     set_length_key("Entries", collection_elm)
 
     playlist_elm = find_or_create_element(2, "PLAYLISTS", dj_playlist)

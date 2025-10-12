@@ -41,7 +41,7 @@ def main():
     print(f"Preparing to export {len(playlists)} playlists...\n")
     xml_element = None
     for playlist in playlists:
-        exported_tracks: List[ExportedTrack] = []
+        exported_tracks: list[ExportedTrack] = []
         playlist_id = playlist[0]
         playlist_name = playlist[1]
 
@@ -60,6 +60,11 @@ def main():
             unit="track",
         ):
             track_id = track[1]
+            if rekordbox_gen.is_track_in_collection(track_id):
+                exported_tracks.append(
+                    rekordbox_gen.get_track_from_collection(track_id)
+                )
+                continue
             libaray_track_ctx = track_cur.execute(
                 "SELECT location, samplerate, channels, duration, title, artist, album, genre, bpm FROM library WHERE id = :id",
                 {"id": track_id},
@@ -94,11 +99,11 @@ def main():
                 location=track_location,
             )
             exported_track = ExportedTrack(
-                id=generate_random_number(), track_context=track_context
+                id=rekordbox_gen.format_track_id(track_id), track_context=track_context
             )
             cuepoints_ctx = track_cur.execute(
                 "SELECT hotcue,position,color from cues WHERE cues.type = 1 and cues.hotcue >= 0 and cues.track_id = :id",
-                {"id": track[1]},
+                {"id": track_id},
             )
             for cue_index, cue_position, color in cuepoints_ctx:
                 exported_track.add_new_cue_point(
