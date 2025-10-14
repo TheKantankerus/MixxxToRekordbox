@@ -1,5 +1,5 @@
 # MixxxToRekordbox
-Sync all your Mixxx Playlists to Rekordbox XML
+Sync your Mixxx Playlists to Rekordbox XML, optionally reformatting your files, all without losing metadata or your hot cue info.
 
 # Getting Started
 
