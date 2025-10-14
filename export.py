@@ -1,19 +1,37 @@
+import argparse
 import os
 from os import path
-from utils.random_id import generate_random_number
-from typing import List
+from pathlib import Path
+import shutil
+
 from models import CueColour, CuePoint, ExportedTrack, TrackContext
 import sqlite3
 from tqdm import tqdm
 import rekordbox_gen
+from pydub import AudioSegment
+
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument(
+    "--out-dir", type=str, help="Outputs tracks to a new directory."
+)
+arg_parser.add_argument(
+    "--format",
+    type=str,
+    help="Change the file format of the tracks, requires --out-dir to be set.",
+)
+arg_parser.add_argument(
+    "--export-all",
+    action="store_true",
+    help="Export all playlists without prompting. May take a while and fill up your drive if --out-dir is set.",
+)
+arg_parser.add_argument(
+    "--mixxx-db-location", type=str, help="Specify Mixxx's DB location if non-standard."
+)
 
 
-CUSTOM_DB_LOCATION = r""  # Change if your DB is not in the default location
-
-
-def get_mixxx_db_location() -> str:
-    if CUSTOM_DB_LOCATION:
-        return CUSTOM_DB_LOCATION
+def get_mixxx_db_location(custom_db_location: str | None) -> str:
+    if custom_db_location:
+        return custom_db_location
     # Windows
     if os.getenv("LOCALAPPDATA"):
         return f"{os.getenv('LOCALAPPDATA')}\\Mixxx\\mixxxdb.sqlite"
@@ -29,8 +47,35 @@ def mixxx_cuepos_to_ms(cuepos: int, samplerate: int, channels: int):
     return int((cuepos * 1000.0) / (samplerate * channels))
 
 
+def transcode_track(track_path: Path, out_path: Path, format: str) -> str:
+    segment = AudioSegment.from_file(track_path, format=track_path.suffix[1:])
+    new_file = out_path.joinpath(f"{track_path.stem}.{format}")
+    segment.export(new_file, format=format)
+    return str(new_file)
+
+
+def change_track_location(track_location: str, out_dir: str, format: str | None) -> str:
+    track_path = Path(track_location)
+    out_dir_path = Path(out_dir)
+    if format:
+        return transcode_track(track_path, out_dir_path, format)
+    else:
+        out_file_path = out_dir_path.joinpath(track_path.name)
+        shutil.copy2(track_path, out_file_path)
+        return str(out_file_path)
+
+
 def main():
-    con = sqlite3.connect(get_mixxx_db_location())
+    args = arg_parser.parse_args()
+    format: str | None = args.format
+    out_dir: str | None = args.out_dir
+    export_all: bool = args.export_all
+    mixxx_db_location: str | None = args.mixxx_db_location
+
+    if format and not out_dir:
+        raise Exception("Output directory must be specified if changing file formats.")
+
+    con = sqlite3.connect(get_mixxx_db_location(mixxx_db_location))
     cur = con.cursor()
 
     playlists = [
@@ -44,6 +89,11 @@ def main():
         exported_tracks: list[ExportedTrack] = []
         playlist_id = playlist[0]
         playlist_name = playlist[1]
+        if (
+            not export_all
+            and input(f"Export {playlist_name}? [y/n]").lower().strip() != "y"
+        ):
+            continue
 
         print(f"{playlist_name}:")
 
@@ -81,11 +131,14 @@ def main():
                 bpm,
             ) = libaray_track_ctx.fetchone()
 
-            track_location_ctx = track_cur.execute(
+            (track_location,) = track_cur.execute(
                 "SELECT location FROM track_locations WHERE id = :id",
                 {"id": track_id},
-            )
-            (track_location,) = track_location_ctx.fetchone()
+            ).fetchone()
+
+            if out_dir or format:
+                track_location = change_track_location(track_location, out_dir, format)
+
             track_context = TrackContext(
                 id=track_id,
                 samplerate=int(samplerate),
