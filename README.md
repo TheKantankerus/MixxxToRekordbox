@@ -8,7 +8,11 @@ Install [uv](https://docs.astral.sh/uv/) and [git](https://git-scm.com/book/en/v
 ```
 git clone https://github.com/TheKantankerus/MixxxToRekordbox.git
 cd .\MixxxToRekordbox
-uv run .\export.py
+```
+
+You can run the script immediately using:
+```
+uv run export.py
 ```
 
 You will see a `[y/n]` prompt for each playlist, asking if you want it exported. Once all playlists have been read, a `rekordbox.xml` file will be generated in the `MixxxToRekordbox` folder. This XML file can then be read in Rekordbox by going to 
@@ -20,7 +24,7 @@ and pointing it to your generated file. You can then see it in the "Display reko
 If you want to export all your playlists without prompting, simply run:
 
 ```
-uv run .\export.py --export-all
+uv run export.py --export-all
 ```
 
 # Change Mixxx Database Location
@@ -28,7 +32,7 @@ uv run .\export.py --export-all
 By default the database is retrieved from [Mixxx's settings directory](https://manual.mixxx.org/2.3/en/chapters/appendix/settings_directory.html). If your database is located somewhere else you'll need to specify this using `--mixxx-db-location` like so:
 
 ```
-uv run .\export.py --mixxx-db-location='C:\SomeOtherMixxxLocation\mixxxdb.sqlite'
+uv run export.py --mixxx-db-location='C:\SomeOtherMixxxLocation\mixxxdb.sqlite'
 ```
 
 # Change file format and output directory
@@ -38,7 +42,7 @@ If you want your files to be output in a different format, you can specify this 
 This is particularly useful if you have music files that aren't supported by older Pioneer hardware (e.g FLACs), allowing you to transcode them whilst keeping your cue points and tags like so:
 
 ```
-uv run .\export.py --out-dir='C:\Temp\' --format='.aiff'
+uv run export.py --out-dir='C:\Temp\' --format='.aiff'
 ```
 
 You can then process the files in Rekordbox, export them to your USB drive and delete the temporary folder.
