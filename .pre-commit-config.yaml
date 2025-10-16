@@ -1,0 +1,33 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.9.3
+    hooks:
+      - id: uv-lock
+  - repo: local
+    hooks:
+      - id: ruff
+        name: Ruff
+        language: system
+        entry: uv run ruff check .
+        types_or: [python, pyi, jupyter]
+        pass_filenames: false
+      - id: ruff format
+        name: Ruff Format
+        language: system
+        types_or: [python, pyi, jupyter]
+        entry: uv run ruff format
+        pass_filenames: true
+  - repo: https://github.com/pappasam/toml-sort
+    rev: v0.23.1
+    hooks:
+      - id: toml-sort
+        name: Sort TOML files
+        args: [-i, --sort-table-keys, --no-sort-tables]

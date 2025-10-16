@@ -137,4 +137,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# generated files and 3rd party executables
 rekordbox.xml
+ffmpeg.exe
+ffplay.exe
+ffprobe.exe

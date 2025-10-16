@@ -54,6 +54,15 @@ def generate(
         track_elm.set("Genre", track.track_context.genre)
         track_elm.set("SampleRate", str(track.track_context.samplerate))
         track_elm.set("AverageBpm", str(track.track_context.bpm))
+
+        if track.beat_grid:
+            tempo_elm = etree.Element("TEMPO")
+            tempo_elm.set("Inizio", str(track.beat_grid.start_sec))
+            tempo_elm.set("Bpm", str(track.beat_grid.bpm or track.track_context.bpm))
+            tempo_elm.set("Metro", str("4/4"))
+            tempo_elm.set("Battito", str(1))
+            track_elm.append(tempo_elm)
+
         if platform.system() == "Windows":
             track_elm.set(
                 "Location", "file://localhost/" + track.track_context.location

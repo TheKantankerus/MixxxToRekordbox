@@ -4,9 +4,10 @@ from os import path
 from pathlib import Path
 import shutil
 
-from models import CueColour, CuePoint, ExportedTrack, TrackContext
+from models import BeatGridInfo, CueColour, CuePoint, ExportedTrack, TrackContext
 import sqlite3
 from tqdm import tqdm
+from offset_handlers import flush_offset_errors
 import rekordbox_gen
 from pydub import AudioSegment
 
@@ -116,7 +117,14 @@ def main():
                 )
                 continue
             libaray_track_ctx = track_cur.execute(
-                "SELECT location, samplerate, channels, duration, title, artist, album, genre, bpm FROM library WHERE id = :id",
+                """
+                SELECT
+                    location, samplerate, channels, duration, title, artist, album, genre, bpm, beats, beats_version
+                FROM
+                    library
+                WHERE
+                    id = :id
+                """,
                 {"id": track_id},
             )
             (
@@ -129,6 +137,8 @@ def main():
                 album,
                 genre,
                 bpm,
+                beats,
+                beats_version,
             ) = libaray_track_ctx.fetchone()
 
             (track_location,) = track_cur.execute(
@@ -151,31 +161,38 @@ def main():
                 bpm=float(bpm) or 0.0,
                 location=track_location,
             )
-            exported_track = ExportedTrack(
-                id=rekordbox_gen.format_track_id(track_id), track_context=track_context
-            )
             cuepoints_ctx = track_cur.execute(
                 "SELECT hotcue,position,color from cues WHERE cues.type = 1 and cues.hotcue >= 0 and cues.track_id = :id",
                 {"id": track_id},
             )
-            for cue_index, cue_position, color in cuepoints_ctx:
-                exported_track.add_new_cue_point(
-                    CuePoint(
-                        1,
-                        cue_index,
-                        mixxx_cuepos_to_ms(
-                            int(cue_position),
-                            track_context.samplerate,
-                            track_context.channels,
-                        ),
-                        CueColour(hex(color)),
-                    )
+            cue_points = [
+                CuePoint(
+                    1,
+                    cue_index,
+                    mixxx_cuepos_to_ms(
+                        int(cue_position),
+                        track_context.samplerate,
+                        track_context.channels,
+                    ),
+                    CueColour(hex(color)),
                 )
-            exported_tracks.append(exported_track)
+                for (cue_index, cue_position, color) in cuepoints_ctx
+            ]
+            exported_tracks.append(
+                ExportedTrack(
+                    id=rekordbox_gen.format_track_id(track_id),
+                    track_context=track_context,
+                    beat_grid=BeatGridInfo(beats, beats_version, samplerate)
+                    if beats
+                    else None,
+                    cue_points=cue_points,
+                )
+            )
 
         xml_element = rekordbox_gen.generate(
             exported_tracks, playlist_name, xml_element
         )
+        flush_offset_errors()
         print("")
     with open("rekordbox.xml", "wb") as fd:
         fd.write(rekordbox_gen.encode_xml_element(xml_element))
