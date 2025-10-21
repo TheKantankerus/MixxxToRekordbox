@@ -56,3 +56,11 @@ If you prefer your track Keys tagged in Musical style (Cm, F#, etc.) rather than
 uv run export.py --key-type=musical
 ```
 Otherwise, the script will default to Lancelot.
+
+# Crates vs Playlists
+
+If you like to keep your Mixxx tracks in Crates, as opposed to Playlists, you can export these by running:
+```
+uv run export-py --use-crates
+```
+Otherwise, the script defaults to exporting Playlists.

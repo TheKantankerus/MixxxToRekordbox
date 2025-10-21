@@ -5,8 +5,11 @@ from pathlib import Path
 import shutil
 
 from models import (
+    COLLECTION_QUERY_MAP,
+    COLLECTION_TRACKS_QUERY_MAP,
     RATING_MAP,
     BeatGridInfo,
+    CollectionType,
     CueColour,
     CuePoint,
     ExportedTrack,
@@ -41,6 +44,11 @@ arg_parser.add_argument(
     "--key-type",
     type=KeyTypes,
     help=f"Specify a key type to export: {[kt.value for kt in KeyTypes]}, defaults to {KeyTypes.LANCELOT}",
+)
+arg_parser.add_argument(
+    "--use-crates",
+    action="store_true",
+    help="Source the tracks from crates instead of playlists, XML output will still be playlists.",
 )
 
 
@@ -87,6 +95,9 @@ def main():
     export_all: bool = args.export_all
     mixxx_db_location: str | None = args.mixxx_db_location
     key_type: KeyTypes = args.key_type or KeyTypes.LANCELOT
+    use_crates: bool = args.use_crates
+
+    collection_type: CollectionType = "crates" if use_crates else "playlists"
 
     if format and not out_dir:
         raise Exception("Output directory must be specified if changing file formats.")
@@ -94,38 +105,36 @@ def main():
     con = sqlite3.connect(get_mixxx_db_location(mixxx_db_location))
     cur = con.cursor()
 
-    playlists = [
-        playlist
-        for playlist in cur.execute("SELECT id, name from Playlists where hidden is 0")
+    collections = [
+        collection for collection in cur.execute(COLLECTION_QUERY_MAP[collection_type])
     ]
 
-    print(f"Preparing to export {len(playlists)} playlists...\n")
+    print(f"Preparing to export {len(collections)} {collection_type}s...\n")
     xml_element = None
-    for playlist in playlists:
+    for collection in collections:
         exported_tracks: list[ExportedTrack] = []
-        playlist_id = playlist[0]
-        playlist_name = playlist[1]
+        collection_id = collection[0]
+        collection_name = collection[1]
         if (
             not export_all
-            and input(f"Export {playlist_name}? [y/n]").lower().strip() != "y"
+            and input(f"Export {collection_name}? [y/n]").lower().strip() != "y"
         ):
             continue
 
-        print(f"{playlist_name}:")
+        print(f"{collection_name}:")
 
-        tracks = [
-            track
+        track_ids = [
+            track[0]
             for track in cur.execute(
-                "SELECT position, track_id FROM PlaylistTracks WHERE playlist_id = :id ORDER BY position",
-                {"id": playlist_id},
+                COLLECTION_TRACKS_QUERY_MAP[collection_type],
+                {"id": collection_id},
             )
         ]
         track_cur = con.cursor()
-        for track in tqdm(
-            tracks,
+        for track_id in tqdm(
+            track_ids,
             unit="track",
         ):
-            track_id = track[1]
             if rekordbox_gen.is_track_in_collection(track_id):
                 exported_tracks.append(
                     rekordbox_gen.get_track_from_collection(track_id)
@@ -211,7 +220,7 @@ def main():
             )
 
         xml_element = rekordbox_gen.generate(
-            exported_tracks, playlist_name, xml_element
+            exported_tracks, collection_name, xml_element
         )
         flush_offset_errors()
         print("")
