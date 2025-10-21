@@ -1,5 +1,5 @@
 # MixxxToRekordbox
-Sync your Mixxx Playlists to Rekordbox XML, optionally reformatting your files, all without losing metadata or your hot cue info.
+Sync your Mixxx Playlists to Rekordbox XML, optionally reformatting your files, all without losing metadata, beat grid or your hot cue info.
 
 # Getting Started
 
@@ -15,7 +15,7 @@ You can run the script immediately using:
 uv run export.py
 ```
 
-You will see a `[y/n]` prompt for each playlist, asking if you want it exported. Once all playlists have been read, a `rekordbox.xml` file will be generated in the `MixxxToRekordbox` folder. This XML file can then be read in Rekordbox by going to 
+You will see a `[y/n]` prompt for each playlist, asking if you want it exported. Once all playlists have been read, a `rekordbox.xml` file will be generated in the `MixxxToRekordbox` folder. This XML file can then be read in Rekordbox by going to
 ```
 Preferences > Advanced > rekordbox xml > Imported Library
 ```
@@ -48,3 +48,11 @@ uv run export.py --out-dir='C:\Temp\' --format='.aiff'
 You can then process the files in Rekordbox, export them to your USB drive and delete the temporary folder.
 
 In order to change the file format you'll need to install [ffmpeg](https://ffmpeg.org/) so that the `ffmpeg` and `ffprobe` commands are accessible by the script. If you're having trouble on Windows, downloading the latest executables from ffmpeg into the script's directory should work.
+
+# Key tagging
+
+If you prefer your track Keys tagged in Musical style (Cm, F#, etc.) rather than Lancelot (5A, 2B, etc.) you can run the script like so
+```
+uv run export.py --key-type=musical
+```
+Otherwise, the script will default to Lancelot.

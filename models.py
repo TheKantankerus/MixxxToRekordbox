@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from enum import StrEnum, auto
 from typing import Literal
 from offset_handlers import get_offset_sec
 from proto.beats_pb2 import BeatGrid, BeatMap
@@ -13,6 +14,132 @@ SERATO_COLOURS = [
     "0x6823b6",  # Indigo
     "0xce359e",  # Light Magenta
 ]
+
+# 0 star = "0", 1 star = "51", 2 stars = "102", 3 stars = "153", 4 stars = "204", 5 stars = "255"
+RATING_MAP = {0: 0, 1: 51, 2: 102, 3: 153, 4: 204, 5: 255}
+
+
+class KeyTypes(StrEnum):
+    LANCELOT = auto()
+    MUSICAL = auto()
+
+
+LancelotKey = Literal[
+    "1A",
+    "1B",
+    "2A",
+    "2B",
+    "3A",
+    "3B",
+    "4A",
+    "4B",
+    "5A",
+    "5B",
+    "6A",
+    "6B",
+    "7A",
+    "7B",
+    "8A",
+    "8B",
+    "9A",
+    "9B",
+    "10A",
+    "10B",
+    "11A",
+    "11B",
+    "12A",
+    "12B",
+]
+MusicalKey = Literal[
+    "A",
+    "Am",
+    "Ab",
+    "Abm",
+    "C",
+    "Cm",
+    "D",
+    "Dm",
+    "Db",
+    "Dbm",
+    "E",
+    "Em",
+    "Eb",
+    "Ebm",
+    "F",
+    "Fm",
+    "F#",
+    "F#m",
+    "G",
+    "Gm",
+    "Bb",
+    "Bbm",
+    "B",
+    "Bm",
+]
+
+LANCELOT_MAP: dict[int, LancelotKey] = {
+    21: "1A",
+    12: "1B",
+    16: "2A",
+    7: "2B",
+    23: "3A",
+    2: "3B",
+    18: "4A",
+    9: "4B",
+    13: "5A",
+    4: "5B",
+    20: "6A",
+    11: "6B",
+    15: "7A",
+    6: "7B",
+    22: "8A",
+    1: "8B",
+    17: "9A",
+    8: "9B",
+    24: "10A",
+    3: "10B",
+    19: "11A",
+    10: "11B",
+    14: "12A",
+    5: "12B",
+    0: "",
+}
+
+MUSICAL_MAP: dict[int, MusicalKey] = {
+    21: "Abm",
+    12: "B",
+    16: "Ebm",
+    7: "F#",
+    23: "Bbm",
+    2: "Db",
+    18: "Fm",
+    9: "Ab",
+    13: "Cm",
+    4: "Eb",
+    20: "Gm",
+    11: "Bb",
+    15: "Dm",
+    6: "F",
+    22: "Am",
+    1: "C",
+    17: "Em",
+    8: "G",
+    24: "Bm",
+    3: "D",
+    19: "F#m",
+    10: "A",
+    14: "Dbm",
+    5: "E",
+    0: "",
+}
+
+
+def get_key(key_id: str, key_type: KeyTypes) -> str:
+    match key_type:
+        case KeyTypes.LANCELOT:
+            return LANCELOT_MAP[key_id]
+        case KeyTypes.MUSICAL:
+            return MUSICAL_MAP[key_id]
 
 
 def frame_pos_to_sec(frame: int, samplerate: float) -> float:
@@ -85,6 +212,9 @@ class TrackContext:
     samplerate: int
     channels: int
     bpm: float
+    key: LancelotKey | MusicalKey
+    rating: int
+    colour: str
 
 
 @dataclass

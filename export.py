@@ -4,7 +4,16 @@ from os import path
 from pathlib import Path
 import shutil
 
-from models import BeatGridInfo, CueColour, CuePoint, ExportedTrack, TrackContext
+from models import (
+    RATING_MAP,
+    BeatGridInfo,
+    CueColour,
+    CuePoint,
+    ExportedTrack,
+    KeyTypes,
+    TrackContext,
+    get_key,
+)
 import sqlite3
 from tqdm import tqdm
 from offset_handlers import flush_offset_errors
@@ -27,6 +36,11 @@ arg_parser.add_argument(
 )
 arg_parser.add_argument(
     "--mixxx-db-location", type=str, help="Specify Mixxx's DB location if non-standard."
+)
+arg_parser.add_argument(
+    "--key-type",
+    type=KeyTypes,
+    help=f"Specify a key type to export: {[kt.value for kt in KeyTypes]}, defaults to {KeyTypes.LANCELOT}",
 )
 
 
@@ -72,6 +86,7 @@ def main():
     out_dir: str | None = args.out_dir
     export_all: bool = args.export_all
     mixxx_db_location: str | None = args.mixxx_db_location
+    key_type: KeyTypes = args.key_type or KeyTypes.LANCELOT
 
     if format and not out_dir:
         raise Exception("Output directory must be specified if changing file formats.")
@@ -119,7 +134,7 @@ def main():
             libaray_track_ctx = track_cur.execute(
                 """
                 SELECT
-                    location, samplerate, channels, duration, title, artist, album, genre, bpm, beats, beats_version
+                    location, samplerate, channels, duration, title, artist, album, genre, bpm, beats, beats_version, key_id, rating, color
                 FROM
                     library
                 WHERE
@@ -139,6 +154,9 @@ def main():
                 bpm,
                 beats,
                 beats_version,
+                key_id,
+                rating,
+                colour,
             ) = libaray_track_ctx.fetchone()
 
             (track_location,) = track_cur.execute(
@@ -160,6 +178,9 @@ def main():
                 genre=genre or "",
                 bpm=float(bpm) or 0.0,
                 location=track_location,
+                key=get_key(key_id, key_type),
+                rating=RATING_MAP[rating],
+                colour=colour,
             )
             cuepoints_ctx = track_cur.execute(
                 "SELECT hotcue,position,color from cues WHERE cues.type = 1 and cues.hotcue >= 0 and cues.track_id = :id",
