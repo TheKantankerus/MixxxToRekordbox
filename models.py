@@ -5,14 +5,7 @@ from offset_handlers import get_offset_sec
 from proto.beats_pb2 import BeatGrid, BeatMap
 
 CollectionType = Literal["playlists", "crates"]
-COLLECTION_QUERY_MAP: dict[CollectionType, str] = {
-    "playlists": "SELECT id, name from Playlists where hidden is 0",
-    "crates": "SELECT id, name from crates where show is 1",
-}
-COLLECTION_TRACKS_QUERY_MAP: dict[CollectionType, str] = {
-    "playlists": "SELECT track_id FROM PlaylistTracks WHERE playlist_id = :id ORDER BY position",
-    "crates": "SELECT track_id FROM crate_tracks WHERE crate_id = :id",
-}
+
 
 SERATO_COLOURS = [
     "0xc02626",  # Red
@@ -29,7 +22,7 @@ SERATO_COLOURS = [
 RATING_MAP = {0: 0, 1: 51, 2: 102, 3: 153, 4: 204, 5: 255}
 
 
-class KeyTypes(StrEnum):
+class KeyType(StrEnum):
     LANCELOT = auto()
     MUSICAL = auto()
 
@@ -144,11 +137,11 @@ MUSICAL_MAP: dict[int, MusicalKey] = {
 }
 
 
-def get_key(key_id: str, key_type: KeyTypes) -> str:
+def get_key(key_id: str, key_type: KeyType) -> str:
     match key_type:
-        case KeyTypes.LANCELOT:
+        case KeyType.LANCELOT:
             return LANCELOT_MAP[key_id]
-        case KeyTypes.MUSICAL:
+        case KeyType.MUSICAL:
             return MUSICAL_MAP[key_id]
 
 

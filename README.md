@@ -4,7 +4,6 @@ Sync your Mixxx Playlists to Rekordbox XML, optionally reformatting your files, 
 # Getting Started
 
 Install [uv](https://docs.astral.sh/uv/) and [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), then run:
-
 ```
 git clone https://github.com/TheKantankerus/MixxxToRekordbox.git
 cd .\MixxxToRekordbox
@@ -12,7 +11,7 @@ cd .\MixxxToRekordbox
 
 You can run the script immediately using:
 ```
-uv run export.py
+uv run main.py
 ```
 
 You will see a `[y/n]` prompt for each playlist, asking if you want it exported. Once all playlists have been read, a `rekordbox.xml` file will be generated in the `MixxxToRekordbox` folder. This XML file can then be read in Rekordbox by going to
@@ -22,9 +21,13 @@ Preferences > Advanced > rekordbox xml > Imported Library
 and pointing it to your generated file. You can then see it in the "Display rekordbox xml" tab.
 
 If you want to export all your playlists without prompting, simply run:
-
 ```
-uv run export.py --export-all
+uv run main.py -a
+```
+
+To see all the available commands run:
+```
+uv run main.py -h
 ```
 
 # Change Mixxx Database Location
@@ -32,7 +35,7 @@ uv run export.py --export-all
 By default the database is retrieved from [Mixxx's settings directory](https://manual.mixxx.org/2.3/en/chapters/appendix/settings_directory.html). If your database is located somewhere else you'll need to specify this using `--mixxx-db-location` like so:
 
 ```
-uv run export.py --mixxx-db-location='C:\SomeOtherMixxxLocation\mixxxdb.sqlite'
+uv run main.py --mixxx-db-location='C:\SomeOtherMixxxLocation\mixxxdb.sqlite'
 ```
 
 # Change file format and output directory
@@ -42,7 +45,7 @@ If you want your files to be output in a different format, you can specify this 
 This is particularly useful if you have music files that aren't supported by older Pioneer hardware (e.g FLACs), allowing you to transcode them whilst keeping your cue points and tags like so:
 
 ```
-uv run export.py --out-dir='C:\Temp\' --format='.aiff'
+uv run main.py --out-dir='C:\Temp\' --format='.aiff'
 ```
 
 You can then process the files in Rekordbox, export them to your USB drive and delete the temporary folder.
@@ -53,7 +56,7 @@ In order to change the file format you'll need to install [ffmpeg](https://ffmpe
 
 If you prefer your track Keys tagged in Musical style (Cm, F#, etc.) rather than Lancelot (5A, 2B, etc.) you can run the script like so
 ```
-uv run export.py --key-type=musical
+uv run main.py --key-type=musical
 ```
 Otherwise, the script will default to Lancelot.
 
@@ -61,6 +64,6 @@ Otherwise, the script will default to Lancelot.
 
 If you like to keep your Mixxx tracks in Crates, as opposed to Playlists, you can export these by running:
 ```
-uv run export-py --use-crates
+uv run main.py -c
 ```
 Otherwise, the script defaults to exporting Playlists.

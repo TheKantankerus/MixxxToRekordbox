@@ -10,12 +10,12 @@ def format_track_id(track_id: int | str) -> str:
     return f"{int(track_id):010}"
 
 
-def is_track_in_collection(track_id: int | str) -> str:
-    return format_track_id(track_id) in TRACK_COLLECTION
+def is_track_in_collection(track_id: str) -> bool:
+    return track_id in TRACK_COLLECTION
 
 
-def get_track_from_collection(track_id: int | str) -> str:
-    return TRACK_COLLECTION[format_track_id(track_id)]
+def add_track_to_collection(track: ExportedTrack) -> None:
+    TRACK_COLLECTION[track.id] = track
 
 
 def find_or_create_element(index: int, name: str, root: etree.Element) -> etree.Element:
@@ -71,7 +71,7 @@ def create_playlist_track_elm(track_id: str) -> etree.Element:
     return playlist_track_elm
 
 
-def generate(
+def generate_xml(
     tracks: list[ExportedTrack],
     playlist_name,
     dj_playlist: etree.Element | None,
@@ -87,14 +87,6 @@ def generate(
 
     collection_elm = find_or_create_element(1, "COLLECTION", dj_playlist)
 
-    for track in tracks:
-        if track.id in TRACK_COLLECTION:
-            continue
-        collection_elm.append(create_track_elm(track))
-        TRACK_COLLECTION[track.id] = track
-
-    set_length_key("Entries", collection_elm)
-
     playlist_elm = find_or_create_element(2, "PLAYLISTS", dj_playlist)
     playlist_node_wrapper_elm = find_or_create_element(0, "NODE", playlist_elm)
     playlist_node_wrapper_elm.set("Type", "0")
@@ -107,14 +99,21 @@ def generate(
     for track in tracks:
         playlist_node_elm.append(create_playlist_track_elm(track.id))
 
+        if is_track_in_collection(track.id):
+            continue
+        collection_elm.append(create_track_elm(track))
+        add_track_to_collection(track)
+
     playlist_node_wrapper_elm.append(playlist_node_elm)
     playlist_elm.append(playlist_node_wrapper_elm)
 
+    set_length_key("Entries", collection_elm)
     set_length_key("Entries", playlist_node_elm)
     set_length_key("Count", playlist_node_wrapper_elm)
 
     dj_playlist.append(collection_elm)
     dj_playlist.append(playlist_elm)
+
     return dj_playlist
 
 
