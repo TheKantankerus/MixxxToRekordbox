@@ -13,6 +13,32 @@ COLLECTION_TRACKS_QUERY_MAP: dict[CollectionType, str] = {
     "playlists": "SELECT track_id FROM PlaylistTracks WHERE playlist_id = :id ORDER BY position",
     "crates": "SELECT track_id FROM crate_tracks WHERE crate_id = :id",
 }
+TRACK_INFO_QUERY = """
+                SELECT
+                    l.samplerate,
+                    l.channels,
+                    l.duration,
+                    l.title,
+                    l.artist,
+                    l.album,
+                    l.genre,
+                    l.bpm,
+                    l.beats,
+                    l.beats_version,
+                    l.key_id,
+                    l.rating,
+                    l.color,
+                    tl.location
+                FROM
+                    library l
+                INNER JOIN
+                    track_locations tl
+                USING (id)
+                WHERE
+                    id = :id
+                """
+
+CUE_POINT_QUERY = "SELECT hotcue,position,color from cues WHERE cues.type = 1 and cues.hotcue >= 0 and cues.track_id = :id"
 
 global _db_location
 
@@ -51,30 +77,7 @@ def get_track_info(track_id: str) -> sqlite3.Row:
     return (
         get_cursor()
         .execute(
-            """
-                SELECT
-                    l.samplerate,
-                    l.channels,
-                    l.duration,
-                    l.title,
-                    l.artist,
-                    l.album,
-                    l.genre,
-                    l.bpm,
-                    l.beats,
-                    l.beats_version,
-                    l.key_id,
-                    l.rating,
-                    l.color,
-                    tl.location
-                FROM
-                    library l
-                INNER JOIN
-                    track_locations tl
-                USING (id)
-                WHERE
-                    id = :id
-                """,
+            TRACK_INFO_QUERY,
             {"id": track_id},
         )
         .fetchone()
@@ -85,7 +88,7 @@ def get_cue_points(track_id: str) -> list[sqlite3.Row]:
     return (
         get_cursor()
         .execute(
-            "SELECT hotcue,position,color from cues WHERE cues.type = 1 and cues.hotcue >= 0 and cues.track_id = :id",
+            CUE_POINT_QUERY,
             {"id": track_id},
         )
         .fetchall()

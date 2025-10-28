@@ -14,7 +14,6 @@ from models import (
     ExportedTrack,
     KeyType,
     TrackContext,
-    get_key,
 )
 from tqdm import tqdm
 from offset_handlers import flush_offset_errors
@@ -70,7 +69,7 @@ def get_track_info(
         genre=genre or "",
         bpm=float(bpm) or 0.0,
         location=track_location,
-        key=get_key(key_id, key_type),
+        key=key_type.get_key(key_id),
         rating=RATING_MAP[rating],
         colour=colour,
     ), (BeatGridInfo(beats, beats_version, samplerate) if beats else None)

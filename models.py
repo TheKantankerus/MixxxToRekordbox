@@ -22,11 +22,6 @@ SERATO_COLOURS = [
 RATING_MAP = {0: 0, 1: 51, 2: 102, 3: 153, 4: 204, 5: 255}
 
 
-class KeyType(StrEnum):
-    LANCELOT = auto()
-    MUSICAL = auto()
-
-
 LancelotKey = Literal[
     "1A",
     "1B",
@@ -137,24 +132,16 @@ MUSICAL_MAP: dict[int, MusicalKey] = {
 }
 
 
-def get_key(key_id: str, key_type: KeyType) -> str:
-    match key_type:
-        case KeyType.LANCELOT:
-            return LANCELOT_MAP[key_id]
-        case KeyType.MUSICAL:
-            return MUSICAL_MAP[key_id]
+class KeyType(StrEnum):
+    LANCELOT = auto()
+    MUSICAL = auto()
 
-
-def frame_pos_to_sec(frame: int, samplerate: float) -> float:
-    return frame / samplerate
-
-
-def frame_pos_to_inizio_sec(
-    frame_pos: int, samplerate: float, bpm: float, beats_per_bar: int = 4
-) -> float:
-    hot_cue_sec = frame_pos_to_sec(frame_pos, samplerate)
-    interval_sec = 60 / bpm
-    return hot_cue_sec % (beats_per_bar * interval_sec)
+    def get_key(self, key_id: str) -> str:
+        match self:
+            case KeyType.LANCELOT:
+                return LANCELOT_MAP[key_id]
+            case KeyType.MUSICAL:
+                return MUSICAL_MAP[key_id]
 
 
 BeatsVersion = Literal["BeatGrid-2.0", "BeatMap-1.0"]
@@ -195,12 +182,14 @@ class BeatGridInfo:
 
     @property
     def start_sec(self) -> float:
+        start_sec = self.start_pos / self.samplerate
+
         if not self.bpm:
-            return frame_pos_to_sec(self.start_pos, self.samplerate) + self.offset_sec
-        return (
-            frame_pos_to_inizio_sec(self.start_pos, self.samplerate, self.bpm)
-            + self.offset_sec
-        )
+            return start_sec + self.offset_sec
+        interval_sec = 60 / self.bpm
+        beats_per_bar = 4
+
+        return (start_sec % (beats_per_bar * interval_sec)) + self.offset_sec
 
 
 @dataclass
@@ -282,11 +271,3 @@ class ExportedTrack:
             ]
         cue_point.cue_position += self.offset_sec
         self.cue_points.append(cue_point)
-
-
-class CuePointNotFoundException(Exception):
-    pass
-
-
-class NotACuePointFileException(Exception):
-    pass
