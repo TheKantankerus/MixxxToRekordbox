@@ -33,7 +33,7 @@ TRACK_INFO_QUERY = """
                     library l
                 INNER JOIN
                     track_locations tl
-                USING (id)
+                ON l.location = tl.id
                 WHERE
                     id = :id
                 """
