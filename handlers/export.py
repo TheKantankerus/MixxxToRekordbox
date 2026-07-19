@@ -64,6 +64,7 @@ def get_track_info(
         print(f"File not found at {track_location}")
         return None
 
+    track_source = track_location
     if out_dir or out_format:
         track_location = change_track_location(
             track_location, out_dir, out_format, export_semaphore
@@ -91,6 +92,7 @@ def get_track_info(
         genre=genre or "",
         bpm=float(bpm) or 0.0,
         location=track_location,
+        source=track_source,
         key=key_type.get_key(key_id),
         rating=RATING_MAP[rating],
         colour=colour,
