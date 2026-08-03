@@ -76,16 +76,21 @@ def create_playlist_track_elm(track_id: str) -> etree.Element:
     return E.TRACK(Key=track_id)
 
 
+def create_root_element() -> etree.Element:
+    """Return a minimal valid DJ_PLAYLISTS root element."""
+    return E.DJ_PLAYLISTS(
+        E.PRODUCT(Name="rekordbox", Version="6.5.2", Company="AlphaTheta"),
+        Version="1.0.0",
+    )
+
+
 def generate_xml(
     tracks: list[ExportedTrack],
     playlist_name,
     dj_playlist: etree.Element | None,
 ) -> etree.Element:
     if dj_playlist is None:
-        dj_playlist = E.DJ_PLAYLISTS(
-            E.PRODUCT(Name="rekordbox", Version="6.5.2", Company="AlphaTheta"),
-            Version="1.0.0",
-        )
+        dj_playlist = create_root_element()
 
     collection_elm = find_or_create_element(1, "COLLECTION", dj_playlist)
 

@@ -142,3 +142,5 @@ rekordbox.xml
 ffmpeg.exe
 ffplay.exe
 ffprobe.exe
+*~
+/result

@@ -50,19 +50,13 @@ def get_mixxx_db_location(custom_db_location: str | None) -> str:
     if os.getenv("LOCALAPPDATA"):
         return f"{os.getenv('LOCALAPPDATA')}\\Mixxx\\mixxxdb.sqlite"
     # MacOS
-    if path.exists(r"~/Library/Application Support/Mixxx"):
-        return r"~/Library/Application Support/Mixxx/mixxxdb.sqlite"
-    if path.exists(
-        path.expanduser(
-            r"~/Library/Containers/org.mixxx.mixxx/Data/Library/Application Support/Mixxx/mixxxdb.sqlite"
-        )
-    ):
-        return path.expanduser(
-            r"~/Library/Containers/org.mixxx.mixxx/Data/Library/Application Support/Mixxx/mixxxdb.sqlite"
-        )
+    if path.exists(path.expanduser(r"~/Library/Application Support/Mixxx")):
+        return path.expanduser(r"~/Library/Application Support/Mixxx/mixxxdb.sqlite")
+    if path.exists(path.expanduser(r"~/Library/Containers/org.mixxx.mixxx/Data/Library/Application Support/Mixxx")):
+        return path.expanduser(r"~/Library/Containers/org.mixxx.mixxx/Data/Library/Application Support/Mixxx/mixxxdb.sqlite")
     # Linux
-    if path.exists(r"~/.mixxx"):
-        return r"~/.mixxx/mixxxdb.sqlite"
+    if path.exists(path.expanduser(r"~/.mixxx")):
+        return path.expanduser(r"~/.mixxx/mixxxdb.sqlite")
 
     raise Exception("Mixxx DB not found")
 

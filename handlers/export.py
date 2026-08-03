@@ -6,9 +6,11 @@ from pathlib import Path
 
 from lxml import etree
 from tqdm import tqdm
+import logging
 
 from handlers import sql as sql_handlers
 from handlers.transcode import EXPORT_SEMAPHORE_COUNT, change_track_location
+from list_file import parse_list_file, write_list_file
 from models import (
     RATING_MAP,
     BeatGridInfo,
@@ -22,6 +24,7 @@ from models import (
 from offset_handlers import flush_offset_errors
 from rekordbox_gen import (
     TRACK_COLLECTION,
+    create_root_element,
     encode_xml_element,
     format_track_id,
     generate_xml,
@@ -38,6 +41,7 @@ def get_track_info(
     out_format: str | None,
     key_type: KeyType,
     export_semaphore: Semaphore,
+    virtual_out_dir: str | None
 ) -> tuple[TrackContext, BeatGridInfo | None] | None:
     track_info = sql_handlers.get_track_info(track_id)
     if track_info:
@@ -59,14 +63,18 @@ def get_track_info(
         ) = track_info
     else:
         return None
-
     if not Path.exists(track_location):
         print(f"File not found at {track_location}")
         return None
 
+    track_source = track_location
+
+    # When no virtual out dir is given, the XML should point to where the
+    # files actually land, so fall back to out_dir.
+    effective_virtual_out_dir = virtual_out_dir or out_dir
     if out_dir or out_format:
         track_location = change_track_location(
-            track_location, out_dir, out_format, export_semaphore
+            track_location, out_dir, out_format, export_semaphore, effective_virtual_out_dir
         )
     if track_location.endswith(".ogg"):
         temp_path = Path.home().absolute() / "temp"
@@ -77,6 +85,7 @@ def get_track_info(
             str(temp_path),
             "mp3",
             export_semaphore,
+            str(temp_path),
         )
         print(f"New track created at: {track_location}")
 
@@ -91,6 +100,7 @@ def get_track_info(
         genre=genre or "",
         bpm=float(bpm) or 0.0,
         location=track_location,
+        source=track_source,
         key=key_type.get_key(key_id),
         rating=RATING_MAP[rating],
         colour=colour,
@@ -130,18 +140,20 @@ def get_exported_track(
     key_type: KeyType,
     export_semaphore: Semaphore,
     track_collection: dict,
+    virtual_out_dir: str | None
 ) -> ExportedTrack | None:
     if track_id in track_collection:
         return track_collection[track_id]
-
     track_info = get_track_info(
-        track_id, out_dir, out_format, key_type, export_semaphore
+        track_id, out_dir, out_format, key_type, export_semaphore, virtual_out_dir
     )
     if not track_info:
         print(f"No info found for Track {track_id}")
         return None
-
     track_context, beat_grid = track_info
+    if track_context is None:
+        return None
+
     return ExportedTrack(
         id=format_track_id(track_id),
         track_context=track_context,
@@ -162,6 +174,7 @@ def get_data_for_tracks(
     out_format: str | None,
     key_type: KeyType,
     db_location: str | None,
+    virtual_out_dir: str | None,
 ) -> list[ExportedTrack]:
     manager = Manager()
     export_semaphore = manager.Semaphore(EXPORT_SEMAPHORE_COUNT)
@@ -173,6 +186,7 @@ def get_data_for_tracks(
         initargs=(db_location,),
     ) as pool:
         return list(
+            el for el in
             tqdm(
                 (
                     track
@@ -184,6 +198,7 @@ def get_data_for_tracks(
                             key_type=key_type,
                             export_semaphore=export_semaphore,
                             track_collection=track_collection,
+                            virtual_out_dir=virtual_out_dir,
                         ),
                         track_ids,
                         chunksize=1 if out_format else 2,
@@ -193,6 +208,7 @@ def get_data_for_tracks(
                 unit="track",
                 total=len(track_ids),
             )
+            if el is not None
         )
 
 
@@ -200,24 +216,18 @@ def append_collection_to_element(
     collection_id: str,
     collection_name: str,
     xml_element: etree.Element,
-    export_all: bool,
     collection_type: CollectionType,
     out_dir: str | None,
     out_format: str | None,
     key_type: KeyType,
     db_location: str | None,
+    virtual_out_dir: str | None,
 ) -> etree.Element:
-    if (
-        not export_all
-        and input(f"Export {collection_name}? [y/n]").lower().strip() != "y"
-    ):
-        return xml_element
-
     print(f"{collection_name}:")
     track_ids = sql_handlers.get_collection_tracks(collection_type, collection_id)
 
     return generate_xml(
-        get_data_for_tracks(track_ids, out_dir, out_format, key_type, db_location),
+        get_data_for_tracks(track_ids, out_dir, out_format, key_type, db_location, virtual_out_dir),
         collection_name,
         xml_element,
     )
@@ -229,34 +239,78 @@ def export_to_rekordbox_xml(
     export_all: bool,
     mixxx_db_location: str | None,
     key_type: KeyType,
-    collection_type: CollectionType,
+    collection_types: list[CollectionType],
+    virtual_out_dir: str | None,
+    prefixes: dict[CollectionType, str],
+    suffixes: dict[CollectionType, str],
+    list_file: str | None,
+    generate_list_file: str | None,
 ) -> None:
     db_location = sql_handlers.get_mixxx_db_location(mixxx_db_location)
     if out_format and not out_dir:
         raise Exception("Output directory must be specified if changing file formats.")
     sql_handlers.set_db_location(db_location)
 
-    collections = sql_handlers.get_collections(collection_type)
+    # When asked, write a list file of every available collection (commented
+    # out) and exit without exporting anything.
+    if generate_list_file:
+        all_collections = {
+            ctype: sql_handlers.get_collections(ctype) for ctype in collection_types
+        }
+        write_list_file(generate_list_file, all_collections)
+        total = sum(len(items) for items in all_collections.values())
+        print(f"Wrote {total} collections to list file: {generate_list_file}")
+        return
 
-    print(f"Preparing to export {len(collections)} {collection_type}s...\n")
-    xml_element = None
-    for collection in collections:
-        collection_id = collection[0]
-        collection_name = collection[1]
-        xml_element = append_collection_to_element(
-            collection_id,
-            collection_name,
-            xml_element,
-            export_all,
-            collection_type,
-            out_dir,
-            out_format,
-            key_type,
-            db_location,
-        )
-        flush_offset_errors()
-        print("")
-    with open("rekordbox.xml", "wb") as fd:
+    # If a list file is supplied, only the non-commented entries are exported,
+    # non-interactively. Entries absent from the file are skipped entirely.
+    selected: dict[CollectionType, set[str]] | None = (
+        parse_list_file(list_file) if list_file else None
+    )
+
+    xml_element = create_root_element()
+    for collection_type in collection_types:
+        collections = sql_handlers.get_collections(collection_type)
+        prefix = prefixes.get(collection_type, "")
+        suffix = suffixes.get(collection_type, "")
+        print(f"Preparing to export {len(collections)} {collection_type}s...\n")
+        for collection in collections:
+            collection_id = collection[0]
+            collection_name = collection[1]
+
+            if selected is not None:
+                if collection_name not in selected[collection_type]:
+                    continue
+                should_export = True
+            else:
+                should_export = export_all or (
+                    input(f"Export {collection_name}? [y/n]").lower().strip() == "y"
+                )
+            if not should_export:
+                continue
+
+            export_name = f"{prefix}{collection_name}{suffix}"
+            try:
+                xml_element = append_collection_to_element(
+                    collection_id,
+                    export_name,
+                    xml_element,
+                    collection_type,
+                    out_dir,
+                    out_format,
+                    key_type,
+                    db_location,
+                    virtual_out_dir,
+                )
+            except Exception as e:
+                logging.error('Error exporting %s %s', collection_type, collection_name, exc_info=e)
+            flush_offset_errors()
+            print("")
+    # Write the XML next to the exported tracks when --out-dir is set, so the
+    # whole bundle lives in one place. Otherwise fall back to the CWD.
+    out_dir_path = Path(out_dir) if out_dir else Path(".")
+    xml_path = out_dir_path / "rekordbox.xml"
+    with open(xml_path, "wb") as fd:
         fd.write(encode_xml_element(xml_element))
         fd.close()
-    print("done")
+    print(f"done: {xml_path}")
